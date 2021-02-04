@@ -14,6 +14,29 @@ const utils = require('./utils');
 const get = require('get-value');
 const set = require('set-value');
 
+
+const ILLEGAL_KEYS = ['__proto__', 'constructor', 'prototype'];
+
+function isIllegalKey(key) {
+  return ILLEGAL_KEYS.indexOf(key) !== -1;
+}
+
+function isProtoPath(path) {
+  return Array.isArray(path)
+    ? path.some(isIllegalKey)
+    : typeof path === "string"
+      ? path.split(".").length > 0
+        ? isProtoPath(path.split("."))
+          : isIllegalKey(path)
+            : false;
+}
+
+function disallowProtoPath(path) {
+  if (isProtoPath(path)) {
+    throw new Error(`Unsafe path encountered: ${path.toString()}`)
+  }
+}
+
 /**
  * Initialize a new `Store` with the given `name`, `options` and `default` data.
  *
@@ -92,6 +115,7 @@ class Store {
       }
     } else {
       assert.equal(typeof key, 'string', 'expected key to be a string');
+      disallowProtoPath(key);
       set(this.data, key, val);
     }
 
